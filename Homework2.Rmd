@@ -1,0 +1,199 @@
+---
+title: "Homework2"
+author: "seongbin"
+date: '2020 9 17 '
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 0.Data check
+시계열 분석을 하기에 앞서 데이터의 분포를 살표본다.
+
+
+```{r data}
+X<- read.csv("C://Users//stat//Desktop//학교//2-2//시계열//spot.csv")
+head(X)
+T<-as.matrix(X)
+dim(T)
+boxplot(T[,1])
+Y=seq(1,100,1)
+Z<-cbind(T,Y)
+plot(Z[,2],Z[,1])
+```
+
+
+
+
+
+## SOL1
+
+# Draw time series graph of sun spot
+```{r 1-1}
+T.ts=ts(data=T,frequency=1)
+plot(T.ts, mai ="Time Series graph of Sun spot")
+abline(h=mean(T.ts[,1]),col="blue")
+```
+
+# Do you see any cycle or seasonal effect?
+
+```{r 1-2}
+tseries::kpss.test(T.ts,null="Level")
+tseries::kpss.test(T.ts,null="Trend")
+```
+kpss.test의 p-value 판단 결과(유의수준0.05기준), Trend를 고려하지 않았을 경우 데이터는 비정상 시계열로 판단된다.반면,Trend(추세&계절성)를 고려했을 경우 정상적인 시계열로 판단할 수 있다.
+=>Trend가 있다고 판단된다.
+
+
+
+
+## SOL2
+
+# try 5-point moving average smoothing.
+
+```{r 2-1}
+m5=filter(T.ts, filter=rep(1/5,5))
+plot(T.ts,main="5-point average(red)")
+lines(m5,col="red",lty=2, lwd=2)
+```
+
+# Draw the plot of original graph in black, 4 point MA smoothing in red, mean value in blue.
+```{r 2-2}
+ff=filter(T.ts, filter=rep(1,4)/4, method="convolution", sides=1)
+plot(T.ts, main="T.ts with simple moving average smoothing")
+lines(ff, col="red",lty=2, lwd=2)
+abline(h=mean(T),col="blue")
+```
+
+
+## SOL3
+
+## Check the residual plot
+```{r 3-1}
+head(ff,10)
+#4개의 point로 MA를 시행하였으므로 앞의 3관측치를 제외
+res=ff[-1:-3,]-T.ts[-1:-3,]
+head(res,10)
+library(forecast)
+tsdisplay(res, main="residuals by MA(4) smoothing")
+```
+
+# check the stationary
+ACF와 PACF를 보면 신뢰수준(표준편차 2배)을 벗어나는 값이 다수 존재하므로 정상성이 존재하지 않는다고 판단된다.
+
+
+
+#  the test the independence assumption
+
+```{r 3-2}
+Box.test(res)
+```
+Box.test 결과 p-value가 유의수준 0.05충분히 크므로 잔차들간의 독립성이 존재한다고 볼 수 있다.
+#  Carefully interpret the residual analysis.
+MA(4)에 대한 잔차분석 결과, 정상성은 존재하지 않으며 잔차들 끼리의 독립성은 존재한다고 판단할 수 있다.
+## SOL4
+# Fit the simple exponential smoothing with alpha=0.1 and with the optimized alpha.
+```{r 4-1}
+alpha=0.1 #exponential
+ ho=HoltWinters(T.ts, alpha=0.1, beta=F, gamma=F)#exponential smoothing#(beta=F, gamma=F): no trend and no seasonal effect
+ ho
+ head(ho$fitted) #fitting value
+ plot(ho,main = "exponential smoothing(no Trend) with alpha=0.1")
+
+ ha=HoltWinters(T.ts,beta=F,gamma=F) #exponential smoothing
+ ha
+ head(ha$fitted) #fitting value
+ plot(ha,main="exponential smoothing(no Trend) with optimized alpha") #the red line is the fitted value
+```
+
+# If you think we need a trend, or seasonal, or both try them
+처음 1번에서 Ts데이터는 Trend가 고려될 경우에 정상을 나타낸다. 그러므로 계절성과 추세를 고려한 모델링을 해본다.
+```{r}
+```
+
+
+또한, 계절성을 고려한 지수 평활법을 사용하기 위해서 frequency값을 4로 임의로 설정하고 진행한다.
+
+```{r 4-2}
+T.ts=ts(data=T,frequency=4)
+Ta=HoltWinters(T.ts,gamma=F) #exponential smoothing(trend)
+Ta
+head(Ta$fitted)
+plot(Ta,main="exponential smoothing(Trend)")
+```
+
+```{r 4-2-2}
+S.ts=ts(data=T,frequency=4)
+Sa=HoltWinters(S.ts,beta=F) #exponential smoothing(Seasonal)
+Sa
+head(Sa$fitted)
+plot(Sa,main="exponential smoothing(Seasonal)")
+```
+
+```{r 4-2-3}
+S.ts=ts(data=T,frequency=4)
+TSa=HoltWinters(S.ts) #exponential smoothing(Trend&Seasonal)
+TSa
+head(TSa$fitted)
+plot(TSa,main="exponential smoothing(Seasonal&Trend)")
+```
+
+##  Please address all the moeling and show how you find the best exponential smoothing model for spot data.
+RMSE를 비교하여 최적의 지수 평활법 모델을 선정한다.
+```{r 4-3}
+library(tseries)
+library(forecast)
+fTa=forecast(Ta)
+names(fTa)
+tsdisplay(fTa$residuals)
+Box.test(fTa$residuals,type="Box-Pierce")
+tseries::kpss.test(fTa$residuals,null="Level")
+accuracy(fTa)
+```
+```{r 4-3-2}
+fha=forecast(ha)
+names(fha)
+tsdisplay(fha$residuals)
+Box.test(fha$residuals,type="Box-Pierce")
+tseries::kpss.test(fha$residuals,null="Level")
+accuracy(fha)
+
+fSa=forecast(Sa)
+names(fSa)
+tsdisplay(fSa$residuals)
+Box.test(fSa$residuals,type="Box-Pierce")
+tseries::kpss.test(fSa$residuals,null="Level")
+accuracy(fSa)
+```
+```{r 4-3-3}
+fTSa=forecast(TSa)
+names(fTSa)
+tsdisplay(fTSa$residuals)
+Box.test(fTSa$residuals,type="Box-Pierce")
+tseries::kpss.test(fTSa$residuals,null="Level")
+accuracy(fTSa)
+```
+
+잔차분석 결과 model 전부 비정상성을 가진다고 판단된다.
+하지만, 모델중에서 계절성과 추세를 고려하지 않은 최적의 alpha 지수 평활법 모댈이 가장 작은 RMSE를 보이므로 최적의 모델로 선정한다.
+ 
+## From your best model, find the forecast of next 4 points.
+MA(이동평균법)의 경우 예측의 목적 보다는, 분해법에서 '계절조정'에 주로 사용된다. 그러므로 지수 평활법 중 최적 모델인
+"Exponential smoothing(no Trend) with optimized alpha"로 예측을 실시한다.
+```{r 5}
+F=forecast(ha, h=4)
+plot(F,main="80%, 95% significant level for forecasting") 
+lines(F$fitted, col="red", lty=2, lwd=2)
+```
+```{r 5-2}
+FF=forecast(ha, h=4,fan=T)
+plot(FF,main="55-99%")
+lines(FF$fitted,col="red", lty=2, lwd=2)
+```
+```{r ds}
+```
+
+
+
