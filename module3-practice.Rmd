@@ -1,0 +1,259 @@
+---
+title: "module3 practice"
+author: "seongbin"
+date: '2020 9 22 '
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r tidyvere, warning=F, message=F}
+
+# load library
+library(tidyverse)
+library(ggplot2)
+library(forecast)
+#install.packages('fpp')
+library(fpp)
+library(aTSA)
+#install.packages('seasonal')
+library(seasonal)
+library(timsac)
+```
+
+```{r pipeline}
+#pipeline은 데이터 저장 없이 가능
+# ggplot 의 pipeline ctrl+shift+M =%>% 
+round(sqrt(85),2)
+
+sqrt(85) %>% round(2)
+
+autoplot(AirPassengers) #TSA plot
+AirPassengers %>% autoplot()
+
+#stl=decomposition
+#plottung different way
+AirPassengers %>% 
+  stl(t.window=13, s.window="periodic",robust=TRUE) %>% 
+  autoplot()
+
+autoplot(stl(AirPassengers,t.window = 13,s.window = "periodic",robust=TRUE))
+
+
+```
+
+## Classical decomposition
+
+You can also embed plots, for example:
+
+```{r decomp}
+dd2 = matrix(c(1142,1242,1452,1543,1125,1262,1456,1572,1143,1259,1462,1553,1121,1258,1472,1546,1154,1249,1477,1548))
+dd2.ts = ts(data=dd2, start=c(2006,1),frequency=4)
+
+dd4 = matrix(c(1142,1242,1452,1543,1225,1362,1556,1672,1343,1459,1662,1753,1421,1558,1772,1846,1554,1649,1877,1948))
+dd4.ts=ts(data=dd4,start=c(2006,1),frequency=4)
+
+plot(decompose(dd2.ts, type="additive"))#additive model
+plot(decompose(dd4.ts, type="additive"))#additive model
+
+#decomposition
+dd=decompose(dd4.ts, type="additive")
+
+#decomposition results
+names(dd)
+
+dd$seasonal #seasonal effects
+dd$trend #trend effects
+dd$random #random variation effects
+dd_noseasonal=dd4-dd$seasonal # remove seasonal effects
+dd_notrend=dd4-dd$trend # remove trend effects
+
+plot(dd_noseasonal, main="TS without seasonal effects")
+```
+## Decomposition of time series data - multiplicative model
+```{r multi}
+#decomposition
+dd_m=decompose(dd4.ts, type="multiplicative")
+
+#decomposition results
+names(dd_m)
+
+dd_m$seasonal #seasonal effects
+dd_m$trend #trend effects
+dd_m$random #random variation effects
+dd_m_noseasonal=dd4/dd_m$seasonal # remove seasonal effects
+dd_m_notrend=dd4/dd_m$trend # remove trend effects
+
+plot(dd_m_noseasonal, main="TS without seasonal")
+plot(dd_m_notrend, main="TS without trend")
+```
+## Decomposition of Airpassenger data
+
+Decomposition AirPassenger:
+```{r airpass-decomp}
+data("AirPassengers")
+ddd<-decompose(AirPassengers, type="multiplicative")
+
+plot(decompose(AirPassengers, type="additive"))
+plot(decompose(AirPassengers, type="multiplicative"))
+plot(AirPassengers/ddd$seasonal, main="Remove seasonal variation")
+plot(AirPassengers/ddd$trend, main="Remove trend variation")
+
+AirPassengers %>% decompose(type="additive") %>% 
+  autoplot() +
+  ggtitle("Classical additive decomposition of airPassengers data") #title을 바꿔준다
+# ggplot2를 활용하면 r을 잘 다루는 증거가 된다
+
+```
+
+Diagnosis:
+
+```{r airpass-diagnosis, warning=F, message=F}
+
+dda=decompose(AirPassengers, type="additive")
+ddm = decompose(AirPassengers, type="multiplicative")
+
+tseries::kpss.test(dda$random, null ="Level")#stationary for random variation after trend and seasonal effects were removed
+
+tseries::kpss.test(ddm$random,null="Level")#stationary for random variation after trend and seasonal effects were removed
+
+tsdisplay(dda$random, main="Random/Additive model")
+tsdisplay(ddm$random, main="Random/multiplicative model")
+```
+
+## SEATS Decomposition
+```{r SEATS, warning=F, message=F}
+autoplot(elecequip)
+
+elecequip %>% seas() %>% 
+  autoplot() + 
+  ggtitle("SEATS decomposition")
+```
+# X11 decomposition 
+
+classical decomposition을 기반으로 하되 단점을 보완함
+robust하다
+```{r X11}
+?elecequip
+
+#TSA plot
+autoplot(elecequip)
+
+# seasonal effect fitting
+elecequip %>% seas(x11="") -> fit
+
+# A decomposition of the new orders index for elec equip
+autoplot(fit)+
+  ggtitle("X11 decomposition of electrical equipment index")
+
+# the trend-cycle component and the seasonlly adjusted data, along with the original data
+autoplot(elecequip, series="Data")+
+  autolayer(trendcycle(fit),series="Trend") +
+  autolayer(seasadj(fit),series="Seasonally Adjusted") +
+  xlab("year") + ylab("New orders index")+
+  ggtitle("Electrica equipment manufacturing (Euro area)") +
+  scale_color_manual(values=c("gray","blue","red"),breaks=c("Data","Seasonally Adjusted","Trend"))
+
+
+#Seasonal sub-series plot of the seasonal component from the X11 decomposition of the new orders index for electrical equipment
+
+#fit %>% seasonal()
+#fit %>% trend()
+#fit %>% remainder()
+
+fit %>%  seasonal() %>% ggsubseriesplot() + ylab("Seasonal")
+
+
+```
+
+## STL(Seasonal Decomposition of Time Series by Loess)
+다재다능하고 robust하다.
+season 데이터를 잘 처리 (hourly,daily,monthly 다 가능)
+추세 평활 관리
+
+additive model에서만 가능
+```{r air_STL}
+air_stl=stl(AirPassengers,'periodic')
+head(air_stl,10)
+
+plot(air_stl)
+air_ss = seasadj(air_stl) #return seasinally adjusted data cinstructed by removing the seasonal component
+
+seasonal_index=sindexf(air_stl, h=12)
+#h에 따라 seasonal 효과가 다르게 나타남
+seasonal_index
+
+autoplot(air_stl) #decomposition plot
+forecast_air<-forecast::forecast(air_stl)
+forecast_air
+autoplot(forecast_air)
+```
+
+## visualization of TSA, seasonal using ggplot2
+```{r visual_TSA, warning=F, message=F}
+data(a10)
+head(a10)
+str(a10)
+glimpse(a10)
+
+#ACF
+ggAcf(a10)
+ggAcf(a10,lag=48)
+#PACF
+ggPacf(a10)
+ggPacf(a10,lag=48)
+
+
+#monthly sales of antidiabetic drugs in Australia
+autoplot(a10)+
+  ggtitle("Antidibatic drug sales") +
+  ylab("$ million")+
+  xlab("Year")
+
+#seasonal plot of monthly antidiabetic drug sales in Austaralia
+#년도별 시즌의 효과를 자세히 보여준다.
+ggseasonplot(a10,year.labels=TRUE, year.labels.left=TRUE)+
+  ylab("$million") +
+  ggtitle("Seasonal plot: antidiabetic drug sales")
+
+#polar seasonal plot of monthly antidiabetic drug sales in Australia
+#seasonplot 그래프의 그림을 다른형태로(등고선)
+ggseasonplot(a10,polar=TRUE)+
+  ylab("$ million")+
+  ggtitle("Polar seasonal plot: antidiabetic drug sales")
+
+#Seasonal subseries plot of monthly antidiabetic drug sales in Australia
+#season 효과를 합쳐서 보여줌
+ggsubseriesplot(a10) +
+  ylab("$ million") +
+  ggtitle("Seasonal subseries plot: antidiabetic drug sales")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
