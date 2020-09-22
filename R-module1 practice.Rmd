@@ -1,0 +1,124 @@
+---
+title: "Modul_1"
+author: "seongbin"
+date: '2020 9 14 '
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Modul-1 Time Series practice
+
+There are five time series data sets. The first data set (dd1) is a random variation ti,e series
+
+```{r dd1}
+#dd1
+
+dd1=matrix(c(1342,1442,1252,1343,1425,1362,1456,1272,1243,1359,1412,1253,1201,1478,1322,1406,1254,1289,1497,1208))
+dd1.ts=ts(data=dd1, start =c(2006,1),frequency=4)
+dd1.ts
+plot(dd1.ts, mai ='Random variation Time Series')
+
+```
+
+
+The secind data set (dd2) is a seasonal variation time series
+```{r dd2}
+#dd2
+dd2 = matrix(c(1142,1242,1452,1543,1125,1262,1456,1572,1143,1259,1462,1553,1121,1258,1472,1546,1154,1249,1477,1548))
+dd2.ts=ts(data=dd2, start=c(2006,1),frequency=4)
+dd2.ts
+plot(dd2.ts, mai ="Seasonal variation Time Series")
+```
+
+##Stationary
+Let's generate a white noise series
+```{r WN}
+WN <-runif(100, min =-0.5, max=0.5)
+WN.ts<-ts(data=WN, start=c(1,1),frequency=1)
+plot(WN.ts,mai="White noise")
+abline(h=0)
+```
+
+The ACF and PACf plot show that the generated WN.ts is stationary
+```{r stationary}
+acf(WN.ts,main="ACF")
+pacf(WN.ts,main="PACF")
+```
+
+
+
+
+
+Testing if WN.ts is satisfying "stationary"
+```{r stationary-test}
+tseries::kpss.test(WN.ts,null="Level")
+```
+
+##Non-stationary 
+
+Let's generate a random walk series, , which is not-statioinary
+```{r RW}
+at<-runif(100, min=-0.5,max=0.5)
+yt<-runif(100, min=-0.5,max=0.5)
+for(i in 2:100){yt[i]=yt[i-1]+at[i]}
+
+yt.ts<-ts(data=yt)
+plot(yt.ts, mai = "Random walk")
+abline(h=0)
+```
+The ACF and PACF plot show that generated random walk process(yt.ts) is not atationary
+
+```{r non-stationary}
+acf(yt.ts,main="ACF")
+pacf(yt.ts,main="PACF")
+```
+
+KPSS test for stationary
+
+
+```{r nonstationary-test}
+tseries::kpss.test(yt.ts, null="Level")
+tseries::kpss.test(yt.ts, null="Trend")
+
+#추세를 제외하니 stationary를 가진다
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
