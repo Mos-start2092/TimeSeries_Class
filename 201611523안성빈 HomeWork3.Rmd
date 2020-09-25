@@ -1,0 +1,131 @@
+---
+title: "Homework3"
+author: "seongbin AN"
+date: '2020 9 23 '
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## SOL0
+Datacheck
+
+```{r cars}
+library(tidyverse)
+library(ggplot2)
+library(forecast)
+library(seasonal)
+library(aTSA)
+library(timsac)
+X<-read.csv("C://Users//stat//Desktop//학교//2-2//시계열//loadregr.csv")
+dim(X)
+head(X)
+X_ts<-ts(X$MKw, start=c(1970,5),end=c(1979,12), frequency=12)
+```
+
+## SOL1
+# Draw time series plot
+
+```{r 1}
+X_ts %>% autoplot() +
+  ggtitle("Time series plot")
+```
+## SOL2
+# Fit decomposition model and draw a plot with the original data, seasonally adjusted, trend-cycle component all together.
+
+I make stationary test to choose best decomposition way
+
+Classical decomposition(additive)
+```{r 2-1}
+dd1=decompose(X_ts,type="additive")
+tseries::kpss.test(dd1$random,null="Level")
+tsdisplay(dd1$random, main="residual")
+```
+Classical decomposition(multiplicative)
+```{r 2-2}
+dd2=decompose(X_ts,type="multiplicative")
+tseries::kpss.test(dd2$random,null="Level")
+tsdisplay(dd2$random, main="residual")
+```
+SEATS decomposition
+```{r 2-3}
+dd3<-seas(X_ts)
+names(dd3)
+dd3_r<-remainder(dd3)
+tseries::kpss.test(dd3_r,null="Level")
+tsdisplay(dd3_r, main="remainder")
+```
+X11 decomposition
+```{r 2-4}
+X_ts %>% seas(x11="") ->dd4
+dd4_r=remainder(dd4)
+tseries::kpss.test(dd4_r,null="Level")
+tsdisplay(dd4_r, main="remainder")
+```
+STL decomposition
+```{r 2-5}
+dd5<-stl(X_ts,'periodic')
+dd5_r=remainder(dd5)
+tseries::kpss.test(dd5_r,null="Level")
+tsdisplay(dd5_r, main="remainder")
+```
+
+Based on residual ACF&PACF plot and stationary test, 
+X11 decomposition is being used
+
+
+A plot with the original data, seasonally adjusted, trend-cycle component all together
+```{r 2-plot}
+X_ts %>% seas(x11="") ->fit
+autoplot(X_ts, series="Data")+
+  autolayer(trendcycle(fit),series="Trend") +
+  autolayer(seasadj(fit),series="Seasonally Adjusted") +
+  xlab("Time") + ylab("New orders index")+
+  ggtitle("The monthly peak load for electricity Iowa") +
+  scale_color_manual(values=c("gray","blue","red"),breaks=c("Data","Seasonally Adjusted","Trend"))
+
+```
+
+## SOL3
+#  Draw sub-series seasonal effect graph in each month.
+```{r 3}
+fit %>% seasonal() %>% ggsubseriesplot()+ylab("Seasonal")
+```
+This graph shows shape of seasonal effect of each month
+(Blue line is constant seasonal effect of each month)
+
+
+
+## SoL4
+#  Draw a polar seasonal plot.
+```{r 4}
+ggseasonplot(X_ts,polar=TRUE)+
+  ggtitle("Ploar Seasonal plot")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
